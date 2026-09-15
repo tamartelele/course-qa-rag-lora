@@ -1,0 +1,57 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  RAG vs. LoRA Fine-Tuning for Course-Specific QA
+#  Tamar Telele | Applied Language Models | Dr. Barak Or
+#
+#  Tested on Google Colab (Python 3.11, T4 GPU).
+#  Install:  pip install -r requirements.txt
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Core deep learning ─────────────────────────────────────────────────────
+torch>=2.1.0
+transformers>=4.40.0
+accelerate>=0.30.0
+sentencepiece>=0.2.0            # required by the T5 tokenizer
+
+# ── Parameter-efficient fine-tuning ────────────────────────────────────────
+peft>=0.11.0                    # LoRA adapters
+datasets>=2.19.0
+
+# ── Retrieval (RAG) ────────────────────────────────────────────────────────
+sentence-transformers>=3.0.0    # all-MiniLM-L6-v2 encoder
+faiss-cpu>=1.8.0                # IndexFlatIP; use faiss-gpu if available
+rank-bm25>=0.2.2                # Okapi BM25 sparse retrieval
+langchain-text-splitters>=0.2.0 # RecursiveCharacterTextSplitter
+
+# ── Dataset generation & judging (Notebook 1) ──────────────────────────────
+google-genai>=1.0.0             # Gemini API — QA generation + LLM-as-a-Judge
+pymupdf>=1.24.0                 # PDF text extraction with page provenance
+
+# ── Evaluation ─────────────────────────────────────────────────────────────
+evaluate>=0.4.2
+rouge-score>=0.1.2              # ROUGE-L / ROUGE-1
+sacrebleu>=2.4.0                # BLEU (primary metric)
+scikit-learn>=1.5.0             # t-SNE, balanced accuracy, stratified split
+
+# ── Hallucination detection (NLI) ──────────────────────────────────────────
+# Model: cross-encoder/nli-deberta-v3-small — pulled at runtime by transformers.
+# No extra package needed beyond transformers + sentencepiece.
+
+# ── Data handling & visualisation ──────────────────────────────────────────
+pandas>=2.2.0
+numpy>=1.26.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+tqdm>=4.66.0
+
+# ── Interactive demo ───────────────────────────────────────────────────────
+gradio>=4.36.0
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Notes
+#  • On Colab, torch / transformers / pandas / numpy / matplotlib are
+#    preinstalled; the lines above pin the minimum versions actually used.
+#  • GEMINI_API_KEY must be set in Colab Secrets (Notebook 1, Cell 1).
+#  • faiss-gpu is a drop-in replacement for faiss-cpu. At ~1,400 chunks the
+#    CPU build is already sub-millisecond, so it is not required.
+#  • The NLI cross-encoder (~140 MB) downloads on first use.
+# ═══════════════════════════════════════════════════════════════════════════
