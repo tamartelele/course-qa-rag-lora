@@ -32,9 +32,11 @@ Three headline findings:
 | Resource | Link |
 |---|---|
 | Notebook 1 — Data Preparation | https://colab.research.google.com/drive/1gK3xTrbMvp9UjOBxu6PC_xHMvOd1lFH7?usp=sharing |
-| Notebook 2 — RAG · LoRA · Evaluation · Demo | https://colab.research.google.com/drive/17f-2m4YDLkQyxtndQ7LtkN6HvigNlOwJ?usp=sharing |
-| Report| [`RAG_vs_LoRA_Report_EN_Tamar_Telele.pdf`](./RAG_vs_LoRA_Report_EN_Tamar_Telele.pdf) |
-| Slides| `Presentation_EN_*.pptx` · `Presentation_HE_*.pptx` |
+| Notebook 2 — RAG · LoRA · Evaluation | https://colab.research.google.com/drive/17f-2m4YDLkQyxtndQ7LtkN6HvigNlOwJ?usp=sharing |
+| The presentations folder on Google Drive.**| https://drive.google.com/drive/u/1/folders/1KzJHQWItMTC-49B6v1QjJVHTwgzb9z4N |
+
+
+> Colab links are `Share → Anyone with the link → Viewer`. Gradio `share=True` URLs expire after ~72 h; re-run Cell 27 to regenerate.
 
 ---
 
@@ -75,7 +77,7 @@ Built end-to-end from **9 course lecture PDFs** (≈500 slides). No external cor
 |---|---|---|
 | 1 — Heuristic | Deterministic rules | Length bounds; degenerate answers (`yes`, `n/a`); leakage phrases (*"according to the slide"*); exact duplicates; near-duplicates at Jaccard ≥ 0.85 |
 | 2 — LLM Judge | Gemini @ temp 0.0 | Four criteria scored 1–5 — groundedness, correctness, clarity, self-containment. **Accept iff mean ≥ 4.0 AND groundedness ≥ 4, checked separately** |
-| 3 — Human + GPT | Seeded 10% audit | Random reproducible sample shown with machine scores; ChatGPT produced separate deletion and correction lists, applied programmatically |
+| 3 — Human + GPT | Seeded sample audit | Seeded random sample reviewed manually alongside the machine scores; ChatGPT produced separate deletion and correction lists, applied programmatically |
 
 **Judge acceptance rate: 89.1% (1,140 / 1,279).** After Stage 3: **1,130 pairs.**
 
@@ -155,7 +157,7 @@ The second contradicts the t-SNE intuition, and the explanation is that the two 
 
 A study assistant that confidently invents an answer to an off-syllabus question is worse than useless.
 
-The threshold was **calibrated, not guessed**: top-1 similarity was computed for in-scope validation questions and for 12 deliberately out-of-scope probes (cooking, football, astronomy), then thresholds were swept and the one maximising **balanced accuracy** kept — the correct objective when both error types are real and the classes are artificially balanced.
+The threshold was obtained by **calibration**: top-1 similarity was computed for in-scope validation questions and for 12 deliberately out-of-scope probes (cooking, football, astronomy), then candidate thresholds were swept and the value maximising **balanced accuracy** was retained — the correct objective when both error directions carry real cost and the classes are artificially balanced.
 
 **Threshold 0.330 → 100% balanced accuracy.** In-scope p05 (0.462) sits far above out-of-scope p95 (0.294) — a 0.168 gap — and accuracy peaks across a wide band (≈0.30–0.35) rather than one fragile point.
 
@@ -165,7 +167,7 @@ The reader is the **untouched** `flan-t5-base` — the same checkpoint Part B fi
 
 - Beam search (`num_beams=4`, `do_sample=False`) for reproducibility
 - `min_new_tokens=15` eliminates degenerate one-token outputs that occur when EOS is the locally optimal first token
-- Three prompt variants compared on validation by BLEU; **v1** (role framing + task-first ordering) won
+- Three prompt variants compared on validation by **ROUGE-L**, the same metric used for every other selection decision; **v1** (role framing + task-first ordering) won
 - Direct chunk context beat Small-to-Big expansion: at 39 tokens per chunk the top-3 context already fits the 512-token budget, so expansion adds noise without headroom
 
 ---
@@ -214,7 +216,7 @@ Retrained on the **full** validation set (the search used a 100-example subset f
 
 The **Baseline was added deliberately**: without it, a ROUGE-L of 0.44 is a number without a scale.
 
-**BLEU is the primary metric** (course recommendation), **ROUGE-L the robustness check.** BLEU's n-gram precision penalises omitting or substituting precise technical terms — the failure that matters most here. The two produce **identical rankings**, so the conclusion does not depend on metric choice.
+**ROUGE-L is the selection metric throughout** — chunking, retrieval, prompt choice and every LoRA stage — and **BLEU is reported alongside it as an independent check.** Using one metric consistently for all selection decisions avoids the subtle failure where different pipeline stages are optimised against different objectives. BLEU is the stricter of the two, since n-gram precision penalises omitting or substituting precise technical terms, so agreement between them is informative: the two produce **identical rankings**, and the conclusion does not depend on metric choice.
 
 ### Results
 
@@ -265,7 +267,7 @@ The 30 worst answers per system, classified using signals already collected — 
 - **Zero Truncation Errors** validates the sentence-level choice: at 39 tokens per chunk, three chunks never approach the 512-token limit.
 - **RAG's Off-Topic count (10) is double Hybrid's (4)** — the adapter's contribution made visible. Given a marginally relevant chunk, the frozen reader echoes it; the fine-tuned reader stays anchored to the answer shape.
 
-> **One category was renamed during development.** The original *Hallucination* category (grounding ratio < 0.3) measured lexical divergence, not fabrication — flagging correct paraphrases and missing confident inventions that reused vocabulary. It was renamed **Off-Topic**, redefined as ROUGE-L < 0.05, and genuine hallucination moved to the NLI method below. A metric that assigns LoRA its worst possible score for an *architectural* property (no context ⇒ grounding ratio 0 by construction) measures nothing.
+Category definitions: *Off-Topic* = essentially no lexical overlap with the reference (ROUGE-L < 0.05), i.e. a different question was answered; *Generation Error* = on-topic but incorrect or incomplete; *Retrieval Error* = the correct chunk never entered the top-k. Genuine fabrication is measured separately by the NLI method below, because no lexical statistic can detect it.
 
 ---
 
@@ -327,7 +329,7 @@ Some demo questions worth trying:
 | Question | What it shows |
 |---|---|
 | *What is TensorFlow and who developed it?* | LoRA hallucinates (UC Berkeley); Hybrid answers correctly |
-| *What is the recipe for chocolate cake?* | Guardrail fires on RAG and Hybrid; LoRA invents a recipe |
+| *What is the difference between RAG and LoRA fine-tuning?* | Not in the slides — RAG and Hybrid abstain; LoRA answers anyway and gets it wrong |
 | *What is the function of convolutional layers in a CNN?* | High retrieval scores, wrong answer — the reranking argument |
 | *What impact do deeper networks have on inference time?* | Clean Hybrid win |
 
@@ -337,16 +339,13 @@ Some demo questions worth trying:
 
 ```
 .
-├── notebooks/
-│   ├── notebook_1_data_preparation.ipynb     # PDFs → 1,130 audited QA pairs
-│   └── notebook_2_rag_lora_evaluation.ipynb  # RAG · LoRA · evaluation · demo
-├── reports/
-│   ├── RAG_vs_LoRA_Report_EN_Tamar_Telele.pdf
-│   └── RAG_vs_LoRA_Report_HE_Tamar_Telele.pdf
-├── slides/
-│   ├── Presentation_EN_Tamar_Telele.pptx / .html
-│   ├── Presentation_HE_Tamar_Telele.pptx / .html
-│   └── Speaker_Notes_HE_Tamar_Telele.pdf
+├── colab_notebooks/
+│   ├── stage_1_data_preparation.ipynb     # PDFs → 1,130 audited QA pairs
+│   └── stage_2_rag_lora_pipeline.ipynb  # RAG · LoRA · evaluation · demo
+├── report/
+│   ├── RAG_vs_LoRA_Report_Tamar_Telele.pdf
+├── slide/
+│   ├── Presentation_Tamar_Telele.html
 ├── figures/                                   # all plots used in the report
 ├── requirements.txt
 └── README.md
@@ -383,7 +382,7 @@ Every seed is fixed in a single frozen `Config` dataclass at the top of each not
 
 ## Limitations
 
-- **Reference-answer noise.** Answers were LLM-generated and audited on 10%. Residual noise caps ROUGE-L and BLEU from above: a correct paraphrase is penalised against a reference reflecting one model's phrasing. The *ranking* is trustworthy; the absolute ceiling is not.
+- **Reference-answer noise.** Answers were LLM-generated and verified on an audited sample. Residual noise caps both lexical metrics from above: a correct paraphrase is penalised against a reference reflecting one model's phrasing. The *ranking* across systems is trustworthy; the absolute ceiling is an artefact of the reference set, not a property of the systems.
 - **Generation capacity binds.** `flan-t5-base` has 250M parameters. The 0.065 hit/miss gap and the 63–83% generation-error share both say retrieval improvements have little headroom on this reader.
 - **Granularity, not algorithm.** The chunking ablation varies size and overlap with the splitter fixed; semantic and page-boundary chunking were not tested.
 - **Coordinate search is not a full grid.** Only the r×α interaction was measured explicitly; an interaction involving tokenization or dropout would be invisible to this procedure.
@@ -396,11 +395,11 @@ Every seed is fixed in a single frozen `Config` dataclass at the top of each not
 
 Ordered by expected value, given that the reader — not the retriever — is the measured ceiling:
 
-1. **Hybrid fine-tuning.** Train the adapter *with retrieved context inside the prompt*, so it learns to read evidence rather than recall facts. This attacks the measured bottleneck directly.
-2. **Cross-encoder reranking.** Rerank the top-k by query–chunk interaction rather than embedding distance, addressing the 0.997-similarity failure that no bi-encoder can detect.
-3. **Question-type routing.** Different systems lead on different types; a lightweight classifier routing factual → RAG, conceptual → LoRA, comparative → Hybrid could beat any fixed architecture.
-4. **Semantic evaluation.** BERTScore or a calibrated LLM judge as the primary metric, removing the reference-phrasing ceiling that caps ROUGE-L.
-5. **Larger reader.** A quantised 7–8B model on the identical pipeline would isolate how much of the ceiling is model capacity.
+1. **Replace the reader.** The generation stage is the measured bottleneck, so substituting a larger base model — a quantised 7–8B reader on the identical retrieval pipeline — is the single change with the highest expected return, and would also quantify exactly how much of the ceiling is model capacity.
+2. **Replace the QA-generation model.** The reference answers, and therefore the metric ceiling, are products of a single generator. Regenerating the corpus with a stronger model — or an ensemble keeping only pairs several generators agree on — would raise ground-truth quality and reduce the residual noise identified above. This attacks the evaluation ceiling rather than the system, and both need to move.
+3. **Hybrid fine-tuning.** Train the adapter *with retrieved context inside the prompt*, so it learns to read evidence rather than recall facts — attacking the measured bottleneck within the current model size.
+4. **Cross-encoder reranking.** Rerank the top-k by query–chunk interaction rather than embedding distance, addressing the 0.997-similarity failure that no bi-encoder can detect by construction.
+5. **Question-type routing and semantic evaluation.** A lightweight classifier routing factual → RAG, conceptual → LoRA, comparative → Hybrid could outperform any fixed architecture; and BERTScore or a calibrated LLM judge as the primary metric would remove the reference-phrasing ceiling entirely.
 
 ---
 
